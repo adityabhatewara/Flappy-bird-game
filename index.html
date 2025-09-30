@@ -181,11 +181,7 @@
     </div>
 
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc, updateDoc, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+    <script>
         // --- CUSTOMIZATION ---
         // To change the background images, just replace the URLs in this array:
         const backgroundImages = [
@@ -204,78 +200,67 @@
         setRandomBackground();
 
 
-        // --- FIREBASE SETUP ---
-        let db, auth, userId;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'flappy-glow-default';
-        let latestDocId = null; // To track the user's latest submission
+        // --- LEADERBOARD (LOCAL STORAGE) ---
         const highScoreDisplay = document.getElementById('highScoreDisplay');
         const leaderboardModal = document.getElementById('leaderboardModal');
         const leaderboardContent = leaderboardModal.querySelector('#leaderboard-content');
-        let unsubscribeLeaderboard; // To prevent multiple listeners
-        
-        try {
-            const firebaseConfig = JSON.parse(__firebase_config);
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    userId = user.uid;
-                    // --- ATTACH LEADERBOARD LISTENER ---
-                    // This now runs only AFTER user is authenticated
-                    if (db && !unsubscribeLeaderboard) {
-                        const leaderboardCollection = collection(db, `/artifacts/${appId}/public/data/leaderboard`);
-                        unsubscribeLeaderboard = onSnapshot(leaderboardCollection, (snapshot) => {
-                            if (snapshot.docs.length === 0 && !window.seedingInProgress) {
-                                window.seedingInProgress = true;
-                                seedLeaderboard().finally(() => { window.seedingInProgress = false; });
-                            }
-                            const scores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                            scores.sort((a, b) => b.score - a.score || (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-                            
-                            if (scores.length > 0) {
-                                highScoreDisplay.textContent = `HIGH SCORE: ${scores[0].score}`;
-                            }
 
-                            leaderboardContent.innerHTML = '';
-                            const topScores = scores.slice(0, 10);
-                            topScores.forEach((entry, index) => {
-                                const rank = index + 1;
-                                const emoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
-                                const entryDiv = document.createElement('div');
-                                entryDiv.className = 'leaderboard-entry flex justify-between items-center p-3 bg-black bg-opacity-20 rounded-lg';
-                                // Store roll number in a data attribute for the click event
-                                entryDiv.dataset.rollnumber = entry.rollNumber;
-                                entryDiv.dataset.name = entry.name;
-                                
-                                if (entry.id === latestDocId || entry.id === userId) {
-                                    entryDiv.classList.add('new-score');
-                                    if(entry.id === latestDocId) latestDocId = null; // Reset after highlighting
-                                }
-                                entryDiv.innerHTML = `<div class="flex items-center gap-4"><span class="font-bold text-lg w-6 ${rank <= 3 ? 'text-glow-secondary' : ''}">${rank}</span><span class="font-semibold truncate">${entry.name || 'Anonymous'} ${emoji}</span></div><span class="font-bold text-lg text-glow">${entry.score}</span>`;
-                                leaderboardContent.appendChild(entryDiv);
-                            });
-                        });
-                    }
-                } else {
-                    signInAnonymously(auth);
-                }
-            });
-        } catch (error) { console.error("Firebase initialization failed:", error); }
-
-        async function seedLeaderboard() {
-            if (!db) return;
-            const placeholderNames = ["DJ Neon", "RaveRider", "SynthWave", "BassJumper", "GlowStick", "TranceMaster", "Echo", "Flux", "BitCrush", "Voltage"];
-            const promises = [];
-            for (let i = 0; i < placeholderNames.length; i++) {
-                // Seeding doesn't use UID, it's just for placeholder data
-                const leaderboardCollectionRef = collection(db, `/artifacts/${appId}/public/data/leaderboard`);
-                promises.push(addDoc(leaderboardCollectionRef, { name: placeholderNames[i], rollNumber: `AB12C34${i}`, score: 20 - i * 2, createdAt: serverTimestamp() }));
+        function getLeaderboard() {
+            const board = localStorage.getItem('edmGlowLeaderboard');
+            if (board) {
+                return JSON.parse(board);
+            } else {
+                // Seed with placeholder data if no leaderboard exists
+                return [
+                    { name: "DJ Neon", rollNumber: "AB12C340", score: 20 },
+                    { name: "RaveRider", rollNumber: "AB12C341", score: 18 },
+                    { name: "SynthWave", rollNumber: "AB12C342", score: 16 },
+                    { name: "BassJumper", rollNumber: "AB12C343", score: 14 },
+                    { name: "GlowStick", rollNumber: "AB12C344", score: 12 },
+                    { name: "TranceMaster", rollNumber: "AB12C345", score: 10 },
+                    { name: "Echo", rollNumber: "AB12C346", score: 8 },
+                    { name: "Flux", rollNumber: "AB12C347", score: 6 },
+                    { name: "BitCrush", rollNumber: "AB12C348", score: 4 },
+                    { name: "Voltage", rollNumber: "AB12C349", score: 2 }
+                ];
             }
-            await Promise.all(promises);
+        }
+
+        function saveLeaderboard(board) {
+            localStorage.setItem('edmGlowLeaderboard', JSON.stringify(board));
+            updateLeaderboardDisplay();
+        }
+
+        function updateLeaderboardDisplay() {
+            const scores = getLeaderboard();
+            scores.sort((a, b) => b.score - a.score);
+            
+            if (scores.length > 0) {
+                highScoreDisplay.textContent = `HIGH SCORE: ${scores[0].score}`;
+            }
+
+            leaderboardContent.innerHTML = '';
+            const topScores = scores.slice(0, 10);
+            const userRoll = localStorage.getItem('edmGlowUserRoll');
+
+            topScores.forEach((entry, index) => {
+                const rank = index + 1;
+                const emoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'leaderboard-entry flex justify-between items-center p-3 bg-black bg-opacity-20 rounded-lg';
+                entryDiv.dataset.rollnumber = entry.rollNumber;
+                entryDiv.dataset.name = entry.name;
+                
+                if (entry.rollNumber === userRoll) {
+                    entryDiv.classList.add('new-score');
+                }
+                entryDiv.innerHTML = `<div class="flex items-center gap-4"><span class="font-bold text-lg w-6 ${rank <= 3 ? 'text-glow-secondary' : ''}">${rank}</span><span class="font-semibold truncate">${entry.name || 'Anonymous'} ${emoji}</span></div><span class="font-bold text-lg text-glow">${entry.score}</span>`;
+                leaderboardContent.appendChild(entryDiv);
+            });
         }
         
-        if (!db) { leaderboardContent.innerHTML = '<div class="text-center p-4 text-red-400">Leaderboard disabled.</div>'; }
+        updateLeaderboardDisplay();
+
 
         // --- AUDIO ENGINE ---
         let audioCtx, mainGain, isMuted = false;
@@ -449,13 +434,34 @@
         }
         function gameOver() {
             if (isGameOver) return;
-            isGameOver = true; cancelAnimationFrame(animationFrameId); stopBackgroundMusic(); playSound('lose');
-            canvas.classList.add('shake'); setTimeout(() => canvas.classList.remove('shake'), 500);
+            isGameOver = true;
+            cancelAnimationFrame(animationFrameId);
+            stopBackgroundMusic();
+            playSound('lose');
+            canvas.classList.add('shake');
+            setTimeout(() => canvas.classList.remove('shake'), 500);
             finalScoreDisplay.textContent = score;
+
+            const userRoll = localStorage.getItem('edmGlowUserRoll');
+
+            if (userRoll) {
+                // User exists, update score only if it's higher
+                const board = getLeaderboard();
+                const userEntry = board.find(entry => entry.rollNumber === userRoll);
+                if (userEntry && score > userEntry.score) {
+                    userEntry.score = score;
+                    saveLeaderboard(board);
+                }
+                submissionSection.style.display = 'none';
+                postSubmissionSection.classList.remove('hidden');
+                loadInstaEmbed();
+            } else {
+                // New user
+                submissionSection.style.display = 'block';
+                postSubmissionSection.classList.add('hidden');
+            }
+            
             gameOverModal.style.display = 'flex';
-            submissionSection.style.display = 'block';
-            postSubmissionSection.classList.add('hidden');
-            submitScoreButton.disabled = false; submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
         }
         function startGame() {
             initAudio();
@@ -464,6 +470,16 @@
             gameOverModal.style.display = 'none';
             leaderboardModal.style.display = 'none';
             gameLoop();
+        }
+
+        function loadInstaEmbed(){
+             // --- CUSTOMIZATION ---
+            // Paste the full "blockquote" embed code from Instagram here
+            hypeReelContainer.innerHTML = `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/C2Kq_D8y7fS/" data-instgrm-version="14" style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:320px; min-width:320px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);"></blockquote>`;
+            
+            if (window.instgrm) {
+                window.instgrm.Embeds.process();
+            }
         }
 
         // --- Custom Modals ---
@@ -538,69 +554,25 @@
                 return;
             }
 
-            // Roll number format validation (e.g., AB12C345)
             const rollNumberRegex = /^[A-Z]{2}\d{2}[A-Z]\d{3}$/;
             if (!rollNumberRegex.test(rollNumber)) {
                 showAlert("Invalid Roll Number format. Please use the format AB12C345.");
                 return;
             }
 
-            if (!db || !userId) {
-                showAlert("Database connection error. Please try again.");
-                return;
-            }
+            const confirmed = await showConfirm("You can only set your Name and Roll Number once. Are you sure you want to submit?");
+            if (!confirmed) return;
+            
+            localStorage.setItem('edmGlowUserName', name);
+            localStorage.setItem('edmGlowUserRoll', rollNumber);
 
-            submitScoreButton.disabled = true;
-            submitScoreButton.textContent = 'CHECKING...';
-
-            const userDocRef = doc(db, `/artifacts/${appId}/public/data/leaderboard`, userId);
-            const userDocSnap = await getDoc(userDocRef);
-
-            try {
-                if (userDocSnap.exists()) {
-                    // User exists, update score only if it's higher
-                    const existingData = userDocSnap.data();
-                    if (score > existingData.score) {
-                        await updateDoc(userDocRef, {
-                            score: score,
-                            createdAt: serverTimestamp()
-                        });
-                        latestDocId = userId;
-                    }
-                } else {
-                    // New user, show confirmation before creating
-                    const confirmed = await showConfirm("You can only set your Name and Roll Number once. Are you sure you want to submit?");
-                    if (!confirmed) {
-                        submitScoreButton.disabled = false;
-                        submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
-                        return;
-                    }
-                    await setDoc(userDocRef, {
-                        name: name,
-                        rollNumber: rollNumber,
-                        score: score,
-                        createdAt: serverTimestamp()
-                    });
-                    latestDocId = userId;
-                }
-                
-                submissionSection.style.display = 'none';
-                postSubmissionSection.classList.remove('hidden');
-
-                // --- CUSTOMIZATION ---
-                // Paste the full "blockquote" embed code from Instagram here
-                hypeReelContainer.innerHTML = `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/C2Kq_D8y7fS/" data-instgrm-version="14" style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:320px; min-width:320px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);"></blockquote>`;
-                
-                if (window.instgrm) {
-                    window.instgrm.Embeds.process();
-                }
-
-            } catch (error) {
-                console.error("Error writing document: ", error);
-                showAlert("Submission failed. Please try again.");
-                submitScoreButton.disabled = false;
-                submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
-            }
+            const board = getLeaderboard();
+            board.push({ name, rollNumber, score });
+            saveLeaderboard(board);
+            
+            submissionSection.style.display = 'none';
+            postSubmissionSection.classList.remove('hidden');
+            loadInstaEmbed();
         });
 
         // Initial setup
@@ -615,3 +587,4 @@
     </script>
 </body>
 </html>
+
