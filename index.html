@@ -530,78 +530,94 @@
         });
 
         submitScoreButton.addEventListener('click', async () => {
-            const name = nameInput.value.trim();
-            const rollNumber = rollNumberInput.value.trim().toUpperCase();
-            
-            if (!name || !rollNumber) {
-                showAlert("Please fill in both your name and roll number.");
-                return;
-            }
-
-            // Roll number format validation (e.g., AB12C345)
-            const rollNumberRegex = /^[A-Z]{2}\d{2}[A-Z]\d{3}$/;
-            if (!rollNumberRegex.test(rollNumber)) {
-                showAlert("Invalid Roll Number format. Please use the format AB12C345.");
-                return;
-            }
-
-            if (!db || !userId) {
+        const name = nameInput.value.trim();
+        const rollNumber = rollNumberInput.value.trim().toUpperCase();
+    
+        if (!name || !rollNumber) {
+            showAlert("Please fill in both your name and roll number.");
+            return;
+        }
+    
+        // Roll number format validation (e.g., AB12C345)
+        const rollNumberRegex = /^[A-Z]{2}\d{2}[A-Z]\d{3}$/;
+        if (!rollNumberRegex.test(rollNumber)) {
+            showAlert("Invalid Roll Number format. Please use the format AB12C345.");
+            return;
+        }
+    
+        if (!db || !auth) {
+            showAlert("Database connection error. Please try again.");
+            return;
+        }
+    
+        // Ensure we have an authenticated UID — sometimes auth state isn't ready yet
+        if (!userId) {
+            try {
+                const cred = await signInAnonymously(auth);
+                userId = cred.user.uid;
+            } catch (err) {
+                console.error("Anonymous sign-in failed:", err);
                 showAlert("Database connection error. Please try again.");
                 return;
             }
-
-            submitScoreButton.disabled = true;
-            submitScoreButton.textContent = 'CHECKING...';
-
-            const userDocRef = doc(db, `/artifacts/${appId}/public/data/leaderboard`, userId);
+        }
+    
+        submitScoreButton.disabled = true;
+        submitScoreButton.textContent = 'CHECKING...';
+    
+        // Use the same path format you already use elsewhere
+        const userDocRef = doc(db, `/artifacts/${appId}/public/data/leaderboard`, userId);
+    
+        try {
             const userDocSnap = await getDoc(userDocRef);
-
-            try {
-                if (userDocSnap.exists()) {
-                    // User exists, update score only if it's higher
-                    const existingData = userDocSnap.data();
-                    if (score > existingData.score) {
-                        await updateDoc(userDocRef, {
-                            score: score,
-                            createdAt: serverTimestamp()
-                        });
-                        latestDocId = userId;
-                    }
-                } else {
-                    // New user, show confirmation before creating
-                    const confirmed = await showConfirm("You can only set your Name and Roll Number once. Are you sure you want to submit?");
-                    if (!confirmed) {
-                        submitScoreButton.disabled = false;
-                        submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
-                        return;
-                    }
-                    await setDoc(userDocRef, {
-                        name: name,
-                        rollNumber: rollNumber,
+    
+            if (userDocSnap.exists()) {
+                // User exists → update score only if it's higher
+                const existingData = userDocSnap.data();
+                const oldScore = existingData.score || 0;
+                if (score > oldScore) {
+                    await updateDoc(userDocRef, {
                         score: score,
                         createdAt: serverTimestamp()
                     });
                     latestDocId = userId;
                 }
-                
-                submissionSection.style.display = 'none';
-                postSubmissionSection.classList.remove('hidden');
-
-                // --- CUSTOMIZATION ---
-                // Paste the full "blockquote" embed code from Instagram here
-                hypeReelContainer.innerHTML = `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/C2Kq_D8y7fS/" data-instgrm-version="14" style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:320px; min-width:320px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);"></blockquote>`;
-                
-                if (window.instgrm) {
-                    window.instgrm.Embeds.process();
+            } else {
+                // New user → confirm then set name, rollNumber and score
+                const confirmed = await showConfirm("You can only set your Name and Roll Number once. Are you sure you want to submit?");
+                if (!confirmed) {
+                    submitScoreButton.disabled = false;
+                    submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+                    return;
                 }
-
-            } catch (error) {
-                console.error("Error writing document: ", error);
-                showAlert("Submission failed. Please try again.");
-                submitScoreButton.disabled = false;
-                submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+                await setDoc(userDocRef, {
+                    name: name,
+                    rollNumber: rollNumber,
+                    score: score,
+                    createdAt: serverTimestamp()
+                });
+                latestDocId = userId;
             }
-        });
+    
+            // UI after successful submission (keeps your original behavior)
+            submissionSection.style.display = 'none';
+            postSubmissionSection.classList.remove('hidden');
+    
+            // keep your Instagram embed exactly as before
+            hypeReelContainer.innerHTML = `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/C2Kq_D8y7fS/" data-instgrm-version="14" style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:320px; min-width:320px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);"></blockquote>`;
+    
+            if (window.instgrm) {
+                window.instgrm.Embeds.process();
+            }
+    
+        } catch (error) {
+            console.error("Error writing document: ", error);
+            showAlert("Submission failed. Please try again.");
+            submitScoreButton.disabled = false;
+            submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+        }
+    });
+
 
         // Initial setup
         resizeCanvas();
