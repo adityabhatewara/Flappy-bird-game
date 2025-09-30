@@ -183,6 +183,11 @@
 
     <script>
         // --- CUSTOMIZATION ---
+        // 1. Paste your JSONBin.io Master Key here
+        const MASTER_KEY = '$2a$10$FYQ6L7uZCETxHybQFt73WO9J4ZhQkETyrAShq15EWTNjnmPp.YW7m';
+        // 2. Paste your JSONBin.io Bin ID here
+        const BIN_ID = '68dbc711ae596e708f011b21';
+
         // To change the background images, just replace the URLs in this array:
         const backgroundImages = [
             'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1920&q=80',
@@ -200,49 +205,78 @@
         setRandomBackground();
 
 
-        // --- LEADERBOARD (LOCAL STORAGE) ---
+        // --- LEADERBOARD (JSONBIN.IO) ---
         const highScoreDisplay = document.getElementById('highScoreDisplay');
         const leaderboardModal = document.getElementById('leaderboardModal');
         const leaderboardContent = leaderboardModal.querySelector('#leaderboard-content');
-
-        function getLeaderboard() {
-            const board = localStorage.getItem('edmGlowLeaderboard');
-            if (board) {
-                return JSON.parse(board);
-            } else {
-                // Seed with placeholder data if no leaderboard exists
-                return [
-                    { name: "DJ Neon", rollNumber: "AB12C340", score: 20 },
-                    { name: "RaveRider", rollNumber: "AB12C341", score: 18 },
-                    { name: "SynthWave", rollNumber: "AB12C342", score: 16 },
-                    { name: "BassJumper", rollNumber: "AB12C343", score: 14 },
-                    { name: "GlowStick", rollNumber: "AB12C344", score: 12 },
-                    { name: "TranceMaster", rollNumber: "AB12C345", score: 10 },
-                    { name: "Echo", rollNumber: "AB12C346", score: 8 },
-                    { name: "Flux", rollNumber: "AB12C347", score: 6 },
-                    { name: "BitCrush", rollNumber: "AB12C348", score: 4 },
-                    { name: "Voltage", rollNumber: "AB12C349", score: 2 }
-                ];
+        const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+        
+        async function getLeaderboard() {
+            try {
+                const response = await fetch(`${BIN_URL}/latest`, {
+                    headers: { 'X-Master-Key': MASTER_KEY }
+                });
+                if (!response.ok) { // If bin is new/empty, it might return 404
+                     if(response.status === 404) return seedLeaderboard();
+                     throw new Error('Could not fetch leaderboard');
+                }
+                const data = await response.json();
+                return data.record;
+            } catch (error) {
+                console.error("Error getting leaderboard:", error);
+                showAlert("Could not load leaderboard. Please check your connection.");
+                return seedLeaderboard(); // Return placeholder data on error
             }
         }
 
-        function saveLeaderboard(board) {
-            localStorage.setItem('edmGlowLeaderboard', JSON.stringify(board));
-            updateLeaderboardDisplay();
+        async function saveLeaderboard(board) {
+             try {
+                const response = await fetch(BIN_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': MASTER_KEY
+                    },
+                    body: JSON.stringify(board)
+                });
+                if (!response.ok) throw new Error('Could not save leaderboard');
+                updateLeaderboardDisplay(); // Update display after saving
+                return true;
+            } catch (error) {
+                console.error("Error saving leaderboard:", error);
+                showAlert("Could not save your score. Please check your connection.");
+                return false;
+            }
+        }
+        
+        function seedLeaderboard() {
+            return [
+                { name: "DJ Neon", rollNumber: "AB12C340", score: 20 },
+                { name: "RaveRider", rollNumber: "AB12C341", score: 18 },
+                { name: "SynthWave", rollNumber: "AB12C342", score: 16 },
+                { name: "BassJumper", rollNumber: "AB12C343", score: 14 },
+                { name: "GlowStick", rollNumber: "AB12C344", score: 12 },
+                { name: "TranceMaster", rollNumber: "AB12C345", score: 10 },
+                { name: "Echo", rollNumber: "AB12C346", score: 8 },
+                { name: "Flux", rollNumber: "AB12C347", score: 6 },
+                { name: "BitCrush", rollNumber: "AB12C348", score: 4 },
+                { name: "Voltage", rollNumber: "AB12C349", score: 2 }
+            ];
         }
 
-        function updateLeaderboardDisplay() {
-            const scores = getLeaderboard();
+        async function updateLeaderboardDisplay() {
+            const scores = await getLeaderboard();
             scores.sort((a, b) => b.score - a.score);
             
             if (scores.length > 0) {
                 highScoreDisplay.textContent = `HIGH SCORE: ${scores[0].score}`;
             }
 
-            leaderboardContent.innerHTML = '';
+            leaderboardContent.innerHTML = 'Loading...';
             const topScores = scores.slice(0, 10);
             const userRoll = localStorage.getItem('edmGlowUserRoll');
-
+            
+            leaderboardContent.innerHTML = '';
             topScores.forEach((entry, index) => {
                 const rank = index + 1;
                 const emoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
@@ -432,7 +466,7 @@
             
             animationFrameId = requestAnimationFrame(gameLoop);
         }
-        function gameOver() {
+        async function gameOver() {
             if (isGameOver) return;
             isGameOver = true;
             cancelAnimationFrame(animationFrameId);
@@ -445,18 +479,16 @@
             const userRoll = localStorage.getItem('edmGlowUserRoll');
 
             if (userRoll) {
-                // User exists, update score only if it's higher
-                const board = getLeaderboard();
+                const board = await getLeaderboard();
                 const userEntry = board.find(entry => entry.rollNumber === userRoll);
                 if (userEntry && score > userEntry.score) {
                     userEntry.score = score;
-                    saveLeaderboard(board);
+                    await saveLeaderboard(board);
                 }
                 submissionSection.style.display = 'none';
                 postSubmissionSection.classList.remove('hidden');
                 loadInstaEmbed();
             } else {
-                // New user
                 submissionSection.style.display = 'block';
                 postSubmissionSection.classList.add('hidden');
             }
@@ -517,6 +549,7 @@
         playAgainButton2.addEventListener('click', startGame);
         
         viewLeaderboardButton.addEventListener('click', () => {
+            updateLeaderboardDisplay();
             leaderboardModal.style.display = 'flex';
         });
         closeLeaderboardButton.addEventListener('click', () => {
@@ -563,16 +596,33 @@
             const confirmed = await showConfirm("You can only set your Name and Roll Number once. Are you sure you want to submit?");
             if (!confirmed) return;
             
+            submitScoreButton.disabled = true;
+            submitScoreButton.textContent = 'SAVING...';
+
+            const board = await getLeaderboard();
+            const existingUser = board.find(entry => entry.rollNumber === rollNumber);
+
+            if(existingUser) {
+                 showAlert("This Roll Number has already been registered. You can only update your score by playing again.");
+                 submitScoreButton.disabled = false;
+                 submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+                 return;
+            }
+
             localStorage.setItem('edmGlowUserName', name);
             localStorage.setItem('edmGlowUserRoll', rollNumber);
 
-            const board = getLeaderboard();
             board.push({ name, rollNumber, score });
-            saveLeaderboard(board);
+            const saved = await saveLeaderboard(board);
             
-            submissionSection.style.display = 'none';
-            postSubmissionSection.classList.remove('hidden');
-            loadInstaEmbed();
+            if(saved) {
+                submissionSection.style.display = 'none';
+                postSubmissionSection.classList.remove('hidden');
+                loadInstaEmbed();
+            } else {
+                 submitScoreButton.disabled = false;
+                 submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+            }
         });
 
         // Initial setup
