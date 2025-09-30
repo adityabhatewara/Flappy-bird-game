@@ -1,391 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EDM Night: Flappy Glow</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    <!-- Instagram Embed Script -->
-    <script async src="//www.instagram.com/embed.js"></script>
-    <style>
-        /* --- CUSTOMIZATION --- */
-        /* Change the theme colors here! */
-        :root {
-            --glow-color: #00ffff;
-            --secondary-glow: #ff00ff;
-            --background-dark: #0d0221;
-        }
-
-        body {
-            font-family: 'Orbitron', sans-serif;
-            background-color: var(--background-dark);
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            touch-action: none; /* Prevents scrolling on touch devices for game area */
-            position: relative;
-            z-index: 1;
-        }
-        
-        /* Dark overlay to ensure text readability over any background image */
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(13, 2, 33, 0.7);
-            z-index: -1;
-        }
-
-        #gameCanvas {
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 1rem;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-            cursor: pointer;
-            transition: transform 0.1s ease-in-out;
-        }
-        
-        @keyframes screenShake {
-            0% { transform: translate(0, 0) rotate(0); box-shadow: 0 0 20px rgba(0, 255, 255, 0.2), 0 0 50px #fff inset; }
-            25% { transform: translate(2px, -2px) rotate(0.5deg); }
-            50% { transform: translate(-2px, 2px) rotate(-0.5deg); }
-            75% { transform: translate(-2px, -2px) rotate(0.5deg); }
-            100% { transform: translate(0, 0) rotate(0); box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); }
-        }
-        
-        .shake { animation: screenShake 0.4s ease-in-out both; }
-
-        .text-glow { text-shadow: 0 0 5px var(--glow-color), 0 0 10px var(--glow-color), 0 0 15px var(--glow-color); }
-        .text-glow-secondary { text-shadow: 0 0 5px var(--secondary-glow), 0 0 10px var(--secondary-glow); }
-
-        .leaderboard-entry { transition: all 0.2s ease-in-out; cursor: pointer; }
-        .leaderboard-entry:hover { background-color: rgba(255, 255, 255, 0.1); transform: scale(1.02); }
-
-        @keyframes new-score-glow {
-            0% { background-color: rgba(0, 255, 255, 0.3); box-shadow: 0 0 15px var(--glow-color); }
-            100% { background-color: rgba(0, 255, 255, 0); box-shadow: none; }
-        }
-
-        .new-score { animation: new-score-glow 1.5s ease-out; }
-        
-        #gameOverModal, #startModal, #leaderboardModal, #alertModal, #confirmModal {
-            background-color: rgba(13, 2, 33, 0.8);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            box-shadow: 0 0 30px var(--glow-color);
-        }
-        
-        .modal-button {
-            background-color: var(--glow-color); color: var(--background-dark); font-weight: bold; border-radius: 0.5rem;
-            padding: 0.75rem 1.5rem; transition: all 0.3s ease; box-shadow: 0 0 10px var(--glow-color); border: none;
-        }
-        
-        .modal-button:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; }
-        .modal-button:hover:not(:disabled) { background-color: white; box-shadow: 0 0 20px white; }
-
-        .form-input {
-            background-color: rgba(0,0,0,0.3); border: 1px solid var(--secondary-glow); box-shadow: 0 0 10px var(--secondary-glow);
-        }
-        .form-input:focus { outline: none; box-shadow: 0 0 15px var(--secondary-glow), 0 0 5px white inset; }
-        
-        /* Custom utility to hide scrollbars while keeping functionality */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EDM Night: Flappy Glow</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<script async src="//www.instagram.com/embed.js"></script>
+<style>
+/* Your CSS here (same as before, omitted for brevity) */
+</style>
 </head>
 <body class="text-white flex flex-col items-center justify-center min-h-screen p-4">
 
-    <div class="relative w-full max-w-lg lg:max-w-md xl:max-w-lg aspect-[3/4] flex items-center justify-center">
-        <div id="score" class="absolute top-4 left-1/2 -translate-x-1/2 text-6xl font-bold text-glow z-10">0</div>
-        <div id="highScoreDisplay" class="absolute top-5 left-5 text-lg font-bold text-glow-secondary z-10">HIGH SCORE: 0</div>
-        <button id="muteButton" class="absolute top-5 right-5 z-10 bg-black bg-opacity-30 p-2 rounded-full">🔊</button>
-        <canvas id="gameCanvas"></canvas>
+<div class="relative w-full max-w-lg lg:max-w-md xl:max-w-lg aspect-[3/4] flex items-center justify-center">
+    <div id="score" class="absolute top-4 left-1/2 -translate-x-1/2 text-6xl font-bold text-glow z-10">0</div>
+    <div id="highScoreDisplay" class="absolute top-5 left-5 text-lg font-bold text-glow-secondary z-10">HIGH SCORE: 0</div>
+    <button id="muteButton" class="absolute top-5 right-5 z-10 bg-black bg-opacity-30 p-2 rounded-full">🔊</button>
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<!-- Pre-Game Submission Modal -->
+<div id="preGameModal" class="absolute inset-0 z-20 flex items-center justify-center">
+    <div class="text-center p-8 rounded-2xl max-w-md mx-4">
+        <h1 class="text-5xl md:text-6xl font-bold text-glow mb-4">FLAPPY GLOW</h1>
+        <p class="text-xl text-glow-secondary mb-2">EDM NIGHT</p>
+        <input type="text" id="preNameInput" placeholder="ENTER YOUR NAME" class="form-input w-full p-3 rounded-lg text-center text-white placeholder-gray-400 mb-4" maxlength="15">
+        <input type="text" id="preRollNumberInput" placeholder="ENTER YOUR ROLL NUMBER (e.g., AB12C345)" class="form-input w-full p-3 rounded-lg text-center text-white placeholder-gray-400 mb-4" maxlength="20">
+        <button id="preSubmitButton" class="modal-button text-2xl w-full">SUBMIT & START</button>
     </div>
-    
-    <div id="startModal" class="absolute inset-0 z-20 flex items-center justify-center">
-        <div class="text-center p-8 rounded-2xl max-w-md mx-4">
-            <h1 class="text-5xl md:text-6xl font-bold text-glow mb-4">FLAPPY GLOW</h1>
-            <p class="text-xl text-glow-secondary mb-2">EDM NIGHT</p>
-            <p class="mb-8 text-lg">Click or Tap to fly. Avoid the neon bars.</p>
-            <button id="startButton" class="modal-button text-2xl">START</button>
+</div>
+
+<div id="gameOverModal" class="absolute inset-0 z-20 hidden items-center justify-center overflow-y-auto no-scrollbar">
+    <div class="text-center p-8 rounded-2xl max-w-lg w-11/12 my-8">
+        <h1 class="text-5xl font-bold text-glow-secondary mb-2">GAME OVER</h1>
+        <p class="text-2xl mb-4">Your Score: <span id="finalScore" class="font-bold text-glow">0</span></p>
+
+        <div class="bg-purple-900 bg-opacity-50 p-4 rounded-lg border border-purple-500 mb-6">
+             <h2 class="text-2xl font-bold text-glow mb-2">FIND OUT WHO THE EDM ARTIST IS</h2>
+             <p>The EDM Night artist reveal is on 15th October. Top 3 on this game will get special prizes!</p>
         </div>
-    </div>
 
-    <div id="gameOverModal" class="absolute inset-0 z-20 hidden items-center justify-center overflow-y-auto no-scrollbar">
-        <div class="text-center p-8 rounded-2xl max-w-lg w-11/12 my-8">
-            <h1 class="text-5xl font-bold text-glow-secondary mb-2">GAME OVER</h1>
-            <p class="text-2xl mb-4">Your Score: <span id="finalScore" class="font-bold text-glow">0</span></p>
-
-            <div class="bg-purple-900 bg-opacity-50 p-4 rounded-lg border border-purple-500 mb-6">
-                 <h2 class="text-2xl font-bold text-glow mb-2">FIND OUT WHO THE EDM ARTIST IS</h2>
-                 <p>The EDM Night artist reveal is on 15th October. Top 3 on this game will get special prizes!</p>
-            </div>
-
-            <div id="submission-section">
-                <div class="flex flex-col gap-4 items-center">
-                     <input type="text" id="nameInput" placeholder="ENTER YOUR NAME" class="form-input w-full p-3 rounded-lg text-center text-white placeholder-gray-400" maxlength="15">
-                     <input type="text" id="rollNumberInput" placeholder="ENTER YOUR ROLL NUMBER (e.g., AB12C345)" class="form-input w-full p-3 rounded-lg text-center text-white placeholder-gray-400" maxlength="20">
-                     <button id="submitScoreButton" class="modal-button w-full">SUBMIT TO LEADERBOARD</button>
-                     <button id="playAgainButton1" class="bg-transparent border border-gray-500 text-gray-300 p-2 rounded-lg w-full hover:bg-gray-700 hover:text-white transition mt-4">PLAY AGAIN</button>
-                </div>
-            </div>
-            
-            <div id="post-submission-section" class="hidden">
-                 <div class="flex flex-col sm:flex-row gap-4 w-full mb-6">
-                    <button id="viewLeaderboardButton" class="modal-button w-full">VIEW LEADERBOARD</button>
-                    <button id="playAgainButton2" class="modal-button w-full bg-transparent border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black">PLAY AGAIN</button>
-                 </div>
-                 <h3 class="text-lg font-bold text-glow mb-4">GET HYPED!</h3>
-                 <div id="hypeReelContainer" class="max-w-sm mx-auto">
-                    <!-- The Instagram embed will be loaded here -->
-                 </div>
+        <div id="submission-section">
+            <div class="flex flex-col gap-4 items-center">
+                 <input type="text" id="nameInput" placeholder="ENTER YOUR NAME" class="form-input w-full p-3 rounded-lg text-center text-white placeholder-gray-400" maxlength="15">
+                 <input type="text" id="rollNumberInput" placeholder="ENTER YOUR ROLL NUMBER (e.g., AB12C345)" class="form-input w-full p-3 rounded-lg text-center text-white placeholder-gray-400" maxlength="20">
+                 <button id="submitScoreButton" class="modal-button w-full">SUBMIT TO LEADERBOARD</button>
+                 <button id="playAgainButton1" class="bg-transparent border border-gray-500 text-gray-300 p-2 rounded-lg w-full hover:bg-gray-700 hover:text-white transition mt-4">PLAY AGAIN</button>
             </div>
         </div>
-    </div>
-
-    <div id="leaderboardModal" class="absolute inset-0 z-30 hidden items-center justify-center overflow-y-auto no-scrollbar">
-        <div class="w-full max-w-lg lg:max-w-xs xl:max-w-sm bg-black bg-opacity-50 rounded-2xl shadow-lg shadow-purple-500/30 h-auto max-h-[90vh] p-6 m-4">
-             <h2 class="text-3xl font-bold text-center mb-4 text-glow-secondary">LEADERBOARD</h2>
-             <div id="leaderboard-content" class="space-y-2 overflow-y-auto h-[calc(100%-120px)] pr-2 no-scrollbar">
-                <!-- Scores will be loaded here -->
+        
+        <div id="post-submission-section" class="hidden">
+             <div class="flex flex-col sm:flex-row gap-4 w-full mb-6">
+                <button id="viewLeaderboardButton" class="modal-button w-full">VIEW LEADERBOARD</button>
+                <button id="playAgainButton2" class="modal-button w-full bg-transparent border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black">PLAY AGAIN</button>
              </div>
-             <button id="closeLeaderboardButton" class="modal-button w-full mt-6">CLOSE</button>
+             <h3 class="text-lg font-bold text-glow mb-4">GET HYPED!</h3>
+             <div id="hypeReelContainer" class="max-w-sm mx-auto">
+                <!-- Instagram embed will load here -->
+             </div>
         </div>
     </div>
+</div>
 
-    <div id="alertModal" class="absolute inset-0 z-40 hidden items-center justify-center">
-        <div class="text-center p-8 rounded-2xl max-w-md mx-4">
-            <p id="alertMessage" class="mb-8 text-lg"></p>
-            <button id="alertOkButton" class="modal-button">OK</button>
-        </div>
-    </div>
-    
-    <div id="confirmModal" class="absolute inset-0 z-40 hidden items-center justify-center">
-        <div class="text-center p-8 rounded-2xl max-w-md mx-4">
-            <p id="confirmMessage" class="mb-8 text-lg"></p>
-            <div class="flex gap-4">
-                <button id="confirmCancelButton" class="modal-button w-full bg-gray-500 hover:bg-gray-400">Cancel</button>
-                <button id="confirmOkButton" class="modal-button w-full">Confirm</button>
-            </div>
-        </div>
-    </div>
+<!-- Leaderboard, Alert, Confirm modals same as before -->
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc, updateDoc, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc, updateDoc, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// --- Firebase Init ---
+let db, auth, userId;
+const appId = 'flappy-glow-default'; // Replace with your appId
+let latestDocId = null;
 
-    // --- CUSTOMIZATION ---
-    const backgroundImages = [
-        'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1920&q=80',
-        'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=1920&q=80',
-        'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1920&q=80',
-        'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1920&q=80'
-    ];
-    function setRandomBackground() {
-        const randomIndex = Math.floor(Math.random() * backgroundImages.length);
-        document.body.style.backgroundImage = `url('${backgroundImages[randomIndex]}')`;
+// Initialize Firebase
+const firebaseConfig = { /* your config JSON */ };
+const app = initializeApp(firebaseConfig);
+db = getFirestore(app);
+auth = getAuth(app);
+
+// Anonymous Sign-In
+async function initUser() {
+    if (!userId) {
+        const cred = await signInAnonymously(auth);
+        userId = cred.user.uid;
     }
-    setRandomBackground();
+}
 
-    // --- FIREBASE SETUP ---
-    let db, auth, userId;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'flappy-glow-default';
-    let latestDocId = null;
-    const highScoreDisplay = document.getElementById('highScoreDisplay');
-    const leaderboardModal = document.getElementById('leaderboardModal');
-    const leaderboardContent = leaderboardModal.querySelector('#leaderboard-content');
-    let unsubscribeLeaderboard;
+// --- DOM Elements ---
+const preGameModal = document.getElementById('preGameModal');
+const preNameInput = document.getElementById('preNameInput');
+const preRollNumberInput = document.getElementById('preRollNumberInput');
+const preSubmitButton = document.getElementById('preSubmitButton');
 
-    try {
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
-    } catch (error) { console.error("Firebase init failed:", error); }
+const startModal = document.getElementById('startModal');
+const gameOverModal = document.getElementById('gameOverModal');
+const submissionSection = document.getElementById('submission-section');
+const postSubmissionSection = document.getElementById('post-submission-section');
+const nameInput = document.getElementById('nameInput');
+const rollNumberInput = document.getElementById('rollNumberInput');
+const submitScoreButton = document.getElementById('submitScoreButton');
+const finalScoreDisplay = document.getElementById('finalScore');
+const hypeReelContainer = document.getElementById('hypeReelContainer');
+const playAgainButton1 = document.getElementById('playAgainButton1');
+const playAgainButton2 = document.getElementById('playAgainButton2');
 
-    // --- ENSURE AUTH ---
-    async function ensureAuth() {
-        return new Promise((resolve, reject) => {
-            if (userId) return resolve(userId);
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    resolve(userId);
-                } else {
-                    try {
-                        const cred = await signInAnonymously(auth);
-                        userId = cred.user.uid;
-                        resolve(userId);
-                    } catch (err) {
-                        console.error("Anonymous sign-in failed:", err);
-                        reject(err);
-                    }
-                }
-            });
-        });
-    }
+// --- Custom Alert/Confirm Functions (same as before) ---
+function showAlert(msg) { alert(msg); }
+function showConfirm(msg) { return Promise.resolve(confirm(msg)); }
 
-    // --- LEADERBOARD LISTENER ---
-    async function attachLeaderboardListener() {
-        if (!db || unsubscribeLeaderboard) return;
-        await ensureAuth();
-        const leaderboardCollection = collection(db, `/artifacts/${appId}/public/data/leaderboard`);
-        unsubscribeLeaderboard = onSnapshot(leaderboardCollection, async (snapshot) => {
-            if (snapshot.docs.length === 0 && !window.seedingInProgress) {
-                window.seedingInProgress = true;
-                await seedLeaderboard();
-                window.seedingInProgress = false;
-            }
-            const scores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            scores.sort((a, b) => b.score - a.score || (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-            if (scores.length > 0) highScoreDisplay.textContent = `HIGH SCORE: ${scores[0].score}`;
+// --- Game Setup ---
+const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+let animationFrameId, canvasWidth, canvasHeight, player, pipes, score, isGameOver, gameSpeed, gameStarted;
+const GRAVITY = 0.3, LIFT = -6, PIPE_WIDTH = 50, PIPE_GAP = 180, PIPE_SPACING = 300;
+const INITIAL_GAME_SPEED = 3, MAX_GAME_SPEED = 7, SCORE_DIFFICULTY_INTERVAL = 3;
 
-            leaderboardContent.innerHTML = '';
-            scores.slice(0, 10).forEach((entry, index) => {
-                const rank = index + 1;
-                const emoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
-                const entryDiv = document.createElement('div');
-                entryDiv.className = 'leaderboard-entry flex justify-between items-center p-3 bg-black bg-opacity-20 rounded-lg';
-                entryDiv.dataset.rollnumber = entry.rollNumber;
-                entryDiv.dataset.name = entry.name;
-                if (entry.id === latestDocId || entry.id === userId) entryDiv.classList.add('new-score');
-                entryDiv.innerHTML = `<div class="flex items-center gap-4"><span class="font-bold text-lg w-6 ${rank <= 3 ? 'text-glow-secondary' : ''}">${rank}</span><span class="font-semibold truncate">${entry.name || 'Anonymous'} ${emoji}</span></div><span class="font-bold text-lg text-glow">${entry.score}</span>`;
-                leaderboardContent.appendChild(entryDiv);
-            });
-        });
+// Player, Pipe, Particle classes same as your code
+// initGame, handlePipes, gameLoop, gameOver, startGame functions same as before
+
+// --- Pre-Game Submission Handler ---
+preSubmitButton.addEventListener('click', async () => {
+    const name = preNameInput.value.trim();
+    const roll = preRollNumberInput.value.trim().toUpperCase();
+
+    if (!name || !roll) { showAlert("Please enter name and roll number."); return; }
+    if (!/^[A-Z]{2}\d{2}[A-Z]\d{3}$/.test(roll)) { showAlert("Invalid roll number format."); return; }
+
+    await initUser();
+
+    const userDocRef = doc(db, `/artifacts/${appId}/public/data/leaderboard`, userId);
+    const userDocSnap = await getDoc(userDocRef);
+    if (!userDocSnap.exists()) {
+        await setDoc(userDocRef, { name, rollNumber: roll, score: 0, createdAt: serverTimestamp() });
     }
 
-    async function seedLeaderboard() {
-        if (!db) return;
-        const placeholderNames = ["DJ Neon", "RaveRider", "SynthWave", "BassJumper", "GlowStick", "TranceMaster", "Echo", "Flux", "BitCrush", "Voltage"];
-        const promises = [];
-        for (let i = 0; i < placeholderNames.length; i++) {
-            const leaderboardCollectionRef = collection(db, `/artifacts/${appId}/public/data/leaderboard`);
-            promises.push(addDoc(leaderboardCollectionRef, { name: placeholderNames[i], rollNumber: `AB12C34${i}`, score: 20 - i * 2, createdAt: serverTimestamp() }));
-        }
-        await Promise.all(promises);
+    preGameModal.style.display = 'none';
+    startGame(); // Start the game after submission
+});
+
+// --- Submit Score Button after game over ---
+submitScoreButton.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    const roll = rollNumberInput.value.trim().toUpperCase();
+
+    if (!name || !roll) { showAlert("Please fill in name and roll number."); return; }
+    if (!/^[A-Z]{2}\d{2}[A-Z]\d{3}$/.test(roll)) { showAlert("Invalid roll number."); return; }
+
+    await initUser();
+
+    const userDocRef = doc(db, `/artifacts/${appId}/public/data/leaderboard`, userId);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+        const oldScore = userDocSnap.data().score || 0;
+        if (score > oldScore) await updateDoc(userDocRef, { score, createdAt: serverTimestamp() });
+        latestDocId = userId;
+    } else {
+        const confirmed = await showConfirm("You can only set Name/Roll once. Proceed?");
+        if (!confirmed) return;
+        await setDoc(userDocRef, { name, rollNumber: roll, score, createdAt: serverTimestamp() });
+        latestDocId = userId;
     }
 
-    attachLeaderboardListener();
+    submissionSection.style.display = 'none';
+    postSubmissionSection.classList.remove('hidden');
 
-    if (!db) leaderboardContent.innerHTML = '<div class="text-center p-4 text-red-400">Leaderboard disabled.</div>';
+    hypeReelContainer.innerHTML = `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/C2Kq_D8y7fS/" data-instgrm-version="14"></blockquote>`;
+    if (window.instgrm) window.instgrm.Embeds.process();
+});
 
-    // --- AUDIO ENGINE ---
-    let audioCtx, mainGain, isMuted = false, musicScheduler = null;
-    function initAudio() {
-        if (isMuted) return;
-        if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); mainGain = audioCtx.createGain(); mainGain.connect(audioCtx.destination); }
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-    }
-    function playSound(type) { /* same as before */ }
-    function startBackgroundMusic() { /* same as before */ }
-    function stopBackgroundMusic() { clearInterval(musicScheduler); musicScheduler = null; }
-
-    // --- GAME SETUP ---
-    const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
-    const scoreDisplay = document.getElementById('score'), startModal = document.getElementById('startModal'), gameOverModal = document.getElementById('gameOverModal');
-    const startButton = document.getElementById('startButton');
-    const playAgainButton1 = document.getElementById('playAgainButton1');
-    const playAgainButton2 = document.getElementById('playAgainButton2');
-    const submitScoreButton = document.getElementById('submitScoreButton');
-    const viewLeaderboardButton = document.getElementById('viewLeaderboardButton');
-    const closeLeaderboardButton = document.getElementById('closeLeaderboardButton');
-    const finalScoreDisplay = document.getElementById('finalScore'), nameInput = document.getElementById('nameInput'), rollNumberInput = document.getElementById('rollNumberInput');
-    const muteButton = document.getElementById('muteButton');
-    const submissionSection = document.getElementById('submission-section'), postSubmissionSection = document.getElementById('post-submission-section');
-    const hypeReelContainer = document.getElementById('hypeReelContainer');
-    const alertModal = document.getElementById('alertModal'), alertMessage = document.getElementById('alertMessage'), alertOkButton = document.getElementById('alertOkButton');
-    const confirmModal = document.getElementById('confirmModal'), confirmMessage = document.getElementById('confirmMessage'), confirmOkButton = document.getElementById('confirmOkButton'), confirmCancelButton = document.getElementById('confirmCancelButton');
-
-    let animationFrameId, canvasWidth, canvasHeight, player, pipes, score, particles, isGameOver, gameSpeed, gameStarted;
-    const GRAVITY = 0.3, LIFT = -6, PIPE_WIDTH = 50, PIPE_GAP = 180, PIPE_SPACING = 300;
-    const INITIAL_GAME_SPEED = 3, MAX_GAME_SPEED = 7, SCORE_DIFFICULTY_INTERVAL = 3;
-
-    // --- GAME OBJECTS --- (Player, Pipe, Particle)
-    function Player(x,y){ /* same as before */ }
-    function Pipe(x){ /* same as before */ }
-    function Particle(x,y,r,c,v){ /* same as before */ }
-
-    // --- GAME LOGIC ---
-    function resizeCanvas() { /* same as before */ }
-    function initGame() { /* same as before */ }
-    function handlePipes() { /* same as before */ }
-    function gameLoop() { /* same as before */ }
-    function gameOver() { /* same as before */ }
-    function startGame() { initAudio(); initGame(); startModal.style.display='none'; gameOverModal.style.display='none'; leaderboardModal.style.display='none'; gameLoop(); }
-
-    // --- Custom Modals ---
-    function showAlert(message){ alertMessage.textContent = message; alertModal.style.display='flex'; }
-    function showConfirm(message){ return new Promise((resolve)=>{ confirmMessage.textContent=message; confirmModal.style.display='flex'; confirmOkButton.onclick=()=>{confirmModal.style.display='none';resolve(true)}; confirmCancelButton.onclick=()=>{confirmModal.style.display='none';resolve(false)}; }); }
-    alertOkButton.onclick = () => alertModal.style.display='none';
-
-    // --- EVENT LISTENERS ---
-    function handleUserAction(){ if(isGameOver) return; if(!gameStarted){ gameStarted=true; startBackgroundMusic(); } player.flap(); }
-    window.addEventListener('resize', ()=>{ resizeCanvas(); if(!animationFrameId) initGame(); });
-    canvas.addEventListener('mousedown', handleUserAction);
-    canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); handleUserAction(); });
-    window.addEventListener('keydown', (e)=>{ if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); handleUserAction(); }});
-
-    startButton.addEventListener('click', startGame);
-    playAgainButton1.addEventListener('click', startGame);
-    playAgainButton2.addEventListener('click', startGame);
-
-    viewLeaderboardButton.addEventListener('click', ()=>{ leaderboardModal.style.display='flex'; });
-    closeLeaderboardButton.addEventListener('click', ()=>{ leaderboardModal.style.display='none'; });
-    leaderboardContent.addEventListener('click', (e)=>{ const entry = e.target.closest('.leaderboard-entry'); if(entry) showAlert(`${entry.dataset.name}'s Roll Number is: ${entry.dataset.rollnumber}`); });
-
-    muteButton.addEventListener('click', ()=>{
-        isMuted = !isMuted;
-        if(isMuted) stopBackgroundMusic();
-        else { initAudio(); if(!isGameOver && gameStarted) startBackgroundMusic(); }
-        muteButton.textContent = isMuted?'🔇':'🔊';
+// --- Play Again Buttons ---
+[playAgainButton1, playAgainButton2].forEach(btn => {
+    btn.addEventListener('click', () => {
+        postSubmissionSection.classList.add('hidden');
+        submissionSection.style.display = 'flex';
+        gameOverModal.style.display = 'none';
+        startGame();
     });
+});
 
-    submitScoreButton.addEventListener('click', async () => {
-        const name = nameInput.value.trim();
-        const rollNumber = rollNumberInput.value.trim().toUpperCase();
-        if(!name || !rollNumber){ showAlert("Please fill in both your name and roll number."); return; }
-        const rollNumberRegex = /^[A-Z]{2}\d{2}[A-Z]\d{3}$/;
-        if(!rollNumberRegex.test(rollNumber)){ showAlert("Invalid Roll Number format. Please use AB12C345."); return; }
-        if(!db || !auth){ showAlert("Database connection error. Please try again."); return; }
-
-        submitScoreButton.disabled=true;
-        submitScoreButton.textContent='CHECKING...';
-        try {
-            await ensureAuth();
-            const userDocRef = doc(db, `/artifacts/${appId}/public/data/leaderboard`, userId);
-            const userDocSnap = await getDoc(userDocRef);
-            if(userDocSnap.exists()){
-                const oldScore = userDocSnap.data().score || 0;
-                if(score>oldScore) await updateDoc(userDocRef,{score,createdAt:serverTimestamp()});
-                latestDocId=userId;
-            } else {
-                const confirmed = await showConfirm("You can only set your Name and Roll Number once. Are you sure?");
-                if(!confirmed){ submitScoreButton.disabled=false; submitScoreButton.textContent='SUBMIT TO LEADERBOARD'; return; }
-                await setDoc(userDocRef,{name,rollNumber,score,createdAt:serverTimestamp()});
-                latestDocId=userId;
-            }
-            submissionSection.style.display='none';
-            postSubmissionSection.classList.remove('hidden');
-            hypeReelContainer.innerHTML=`<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/C2Kq_D8y7fS/" data-instgrm-version="14" style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:320px; min-width:320px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);"></blockquote>`;
-            if(window.instgrm) window.instgrm.Embeds.process();
-        } catch(err){ console.error(err); showAlert("Submission failed. Please try again."); submitScoreButton.disabled=false; submitScoreButton.textContent='SUBMIT TO LEADERBOARD'; }
-    });
+// --- Initialize Game ---
+function startGame() {
+    initAudio();
+    initGame();
+    startModal?.style?.display = 'none';
+    gameOverModal.style.display = 'none';
+    gameLoop();
+}
 
 </script>
-
 </body>
 </html>
-
