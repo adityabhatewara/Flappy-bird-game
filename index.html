@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDM Night: Flappy Glow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Instagram Embed Script -->
+    <script async src="//www.instagram.com/embed.js"></script>
+    <style>
+        /* --- CUSTOMIZATION --- */
+        /* Change the theme colors here! */
+        :root {
+            --glow-color: #00ffff;
+            --secondary-glow: #ff00ff;
+            --background-dark: #0d0221;
+        }
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: var(--background-dark);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            touch-action: none; /* Prevents scrolling on touch devices for game area */
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Dark overlay to ensure text readability over any background image */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(13, 2, 33, 0.7);
+            z-index: -1;
+        }
+
+        #gameCanvas {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 1rem;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            cursor: pointer;
+            transition: transform 0.1s ease-in-out;
+        }
+        
+        @keyframes screenShake {
+            0% { transform: translate(0, 0) rotate(0); box-shadow: 0 0 20px rgba(0, 255, 255, 0.2), 0 0 50px #fff inset; }
+            25% { transform: translate(2px, -2px) rotate(0.5deg); }
+            50% { transform: translate(-2px, 2px) rotate(-0.5deg); }
+            75% { transform: translate(-2px, -2px) rotate(0.5deg); }
+            100% { transform: translate(0, 0) rotate(0); box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); }
+        }
+        
+        .shake { animation: screenShake 0.4s ease-in-out both; }
+
+        .text-glow { text-shadow: 0 0 5px var(--glow-color), 0 0 10px var(--glow-color), 0 0 15px var(--glow-color); }
+        .text-glow-secondary { text-shadow: 0 0 5px var(--secondary-glow), 0 0 10px var(--secondary-glow); }
+
+        .leaderboard-entry { transition: all 0.2s ease-in-out; cursor: pointer; }
+        .leaderboard-entry:hover { background-color: rgba(255, 255, 255, 0.1); transform: scale(1.02); }
+
+        @keyframes new-score-glow {
+            0% { background-color: rgba(0, 255, 255, 0.3); box-shadow: 0 0 15px var(--glow-color); }
+            100% { background-color: rgba(0, 255, 255, 0); box-shadow: none; }
+        }
+
+        .new-score { animation: new-score-glow 1.5s ease-out; }
+        
+        #gameOverModal, #startModal, #leaderboardModal, #alertModal, #confirmModal {
+            background-color: rgba(13, 2, 33, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px var(--glow-color);
+        }
+        
+        .modal-button {
+            background-color: var(--glow-color); color: var(--background-dark); font-weight: bold; border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem; transition: all 0.3s ease; box-shadow: 0 0 10px var(--glow-color); border: none;
+        }
+        
+        .modal-button:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; }
+        .modal-button:hover:not(:disabled) { background-color: white; box-shadow: 0 0 20px white; }
+
+        .form-input {
+            background-color: rgba(0,0,0,0.3); border: 1px solid var(--secondary-glow); box-shadow: 0 0 10px var(--secondary-glow);
+        }
+        .form-input:focus { outline: none; box-shadow: 0 0 15px var(--secondary-glow), 0 0 5px white inset; }
+        
+        /* Custom utility to hide scrollbars while keeping functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="relative w-full max-w-lg lg:max-w-md xl:max-w-lg aspect-[3/4] flex items-center justify-center">
+        <div id="score" class="absolute top-4 left-1/2 -translate-x-1/2 text-6xl font-bold text-glow z-10">0</div>
+        <div id="highScoreDisplay" class="absolute top-5 left-5 text-lg font-bold text-glow-secondary z-10">HIGH SCORE: 0</div>
+        <button id="muteButton" class="absolute top-5 right-5 z-10 bg-black bg-opacity-30 p-2 rounded-full">🔊</button>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    
+    <div id="startModal" class="absolute inset-0 z-20 flex items-center justify-center">
+        <div class="text-center p-8 rounded-2xl max-w-md mx-4">
+            <h1 class="text-5xl md:text-6xl font-bold text-glow mb-4">FLAPPY GLOW</h1>
+            <p class="text-xl text-glow-secondary mb-2">EDM NIGHT</p>
+            <p class="mb-8 text-lg">Click or Tap to fly. Avoid the neon bars.</p>
+            <button id="startButton" class="modal-button text-2xl">START</button>
+        </div>
+    </div>
+
+    <div id="gameOverModal" class="absolute inset-0 z-20 hidden items-center justify-center overflow-y-auto no-scrollbar">
+        <div class="text-center p-8 rounded-2xl max-w-lg w-11/12 my-8">
+            <h1 class="text-5xl font-bold text-glow-secondary mb-2">GAME OVER</h1>
+            <p class="text-2xl mb-4">Your Score: <span id="finalScore" class="font-bold text-glow">0</span></p>
+
+            <div class="bg-purple-900 bg-opacity-50 p-4 rounded-lg border border-purple-500 mb-6">
+                 <h2 class="text-2xl font-bold text-glow mb-2">FIND OUT WHO THE EDM ARTIST IS</h2>
+                 <p>The EDM Night artist reveal is on 15th October. Top 3 on this game will get special prizes!</p>
+            </div>
+
+            <div id="submission-section">
+                <div class="flex flex-col gap-4 items-center">
+                     <input type="text" id="nameInput" placeholder="ENTER YOUR NAME" class="form-input w-full p-3 rounded-lg text-center text-white placeholder-gray-400" maxlength="15">
+                     <input type="text" id="rollNumberInput" placeholder="ENTER YOUR ROLL NUMBER (e.g., AB12C345)" class="form-input w-full p-3 rounded-lg text-center text-white placeholder-gray-400" maxlength="20">
+                     <button id="submitScoreButton" class="modal-button w-full">SUBMIT TO LEADERBOARD</button>
+                     <button id="playAgainButton1" class="bg-transparent border border-gray-500 text-gray-300 p-2 rounded-lg w-full hover:bg-gray-700 hover:text-white transition mt-4">PLAY AGAIN</button>
+                </div>
+            </div>
+            
+            <div id="post-submission-section" class="hidden">
+                 <div class="flex flex-col sm:flex-row gap-4 w-full mb-6">
+                    <button id="viewLeaderboardButton" class="modal-button w-full">VIEW LEADERBOARD</button>
+                    <button id="playAgainButton2" class="modal-button w-full bg-transparent border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black">PLAY AGAIN</button>
+                 </div>
+                 <h3 class="text-lg font-bold text-glow mb-4">GET HYPED!</h3>
+                 <div id="hypeReelContainer" class="max-w-sm mx-auto">
+                    <!-- The Instagram embed will be loaded here -->
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="leaderboardModal" class="absolute inset-0 z-30 hidden items-center justify-center overflow-y-auto no-scrollbar">
+        <div class="w-full max-w-lg lg:max-w-xs xl:max-w-sm bg-black bg-opacity-50 rounded-2xl shadow-lg shadow-purple-500/30 h-auto max-h-[90vh] p-6 m-4">
+             <h2 class="text-3xl font-bold text-center mb-4 text-glow-secondary">LEADERBOARD</h2>
+             <div id="leaderboard-content" class="space-y-2 overflow-y-auto h-[calc(100%-120px)] pr-2 no-scrollbar">
+                <!-- Scores will be loaded here -->
+             </div>
+             <button id="closeLeaderboardButton" class="modal-button w-full mt-6">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="alertModal" class="absolute inset-0 z-40 hidden items-center justify-center">
+        <div class="text-center p-8 rounded-2xl max-w-md mx-4">
+            <p id="alertMessage" class="mb-8 text-lg"></p>
+            <button id="alertOkButton" class="modal-button">OK</button>
+        </div>
+    </div>
+    
+    <div id="confirmModal" class="absolute inset-0 z-40 hidden items-center justify-center">
+        <div class="text-center p-8 rounded-2xl max-w-md mx-4">
+            <p id="confirmMessage" class="mb-8 text-lg"></p>
+            <div class="flex gap-4">
+                <button id="confirmCancelButton" class="modal-button w-full bg-gray-500 hover:bg-gray-400">Cancel</button>
+                <button id="confirmOkButton" class="modal-button w-full">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc, updateDoc, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CUSTOMIZATION ---
+        // To change the background images, just replace the URLs in this array:
+        const backgroundImages = [
+            'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1920&q=80'
+        ];
+
+        function setRandomBackground() {
+            const randomIndex = Math.floor(Math.random() * backgroundImages.length);
+            document.body.style.backgroundImage = `url('${backgroundImages[randomIndex]}')`;
+        }
+        
+        // Set the background when the script loads
+        setRandomBackground();
+
+
+        // --- FIREBASE SETUP ---
+        let db, auth, userId;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'flappy-glow-default';
+        let latestDocId = null; // To track the user's latest submission
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+        const leaderboardModal = document.getElementById('leaderboardModal');
+        const leaderboardContent = leaderboardModal.querySelector('#leaderboard-content');
+        let unsubscribeLeaderboard; // To prevent multiple listeners
+        
+        try {
+            const firebaseConfig = JSON.parse(__firebase_config);
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    // --- ATTACH LEADERBOARD LISTENER ---
+                    // This now runs only AFTER user is authenticated
+                    if (db && !unsubscribeLeaderboard) {
+                        const leaderboardCollection = collection(db, `/artifacts/${appId}/public/data/leaderboard`);
+                        unsubscribeLeaderboard = onSnapshot(leaderboardCollection, (snapshot) => {
+                            if (snapshot.docs.length === 0 && !window.seedingInProgress) {
+                                window.seedingInProgress = true;
+                                seedLeaderboard().finally(() => { window.seedingInProgress = false; });
+                            }
+                            const scores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            scores.sort((a, b) => b.score - a.score || (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                            
+                            if (scores.length > 0) {
+                                highScoreDisplay.textContent = `HIGH SCORE: ${scores[0].score}`;
+                            }
+
+                            leaderboardContent.innerHTML = '';
+                            const topScores = scores.slice(0, 10);
+                            topScores.forEach((entry, index) => {
+                                const rank = index + 1;
+                                const emoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+                                const entryDiv = document.createElement('div');
+                                entryDiv.className = 'leaderboard-entry flex justify-between items-center p-3 bg-black bg-opacity-20 rounded-lg';
+                                // Store roll number in a data attribute for the click event
+                                entryDiv.dataset.rollnumber = entry.rollNumber;
+                                entryDiv.dataset.name = entry.name;
+                                
+                                if (entry.id === latestDocId || entry.id === userId) {
+                                    entryDiv.classList.add('new-score');
+                                    if(entry.id === latestDocId) latestDocId = null; // Reset after highlighting
+                                }
+                                entryDiv.innerHTML = `<div class="flex items-center gap-4"><span class="font-bold text-lg w-6 ${rank <= 3 ? 'text-glow-secondary' : ''}">${rank}</span><span class="font-semibold truncate">${entry.name || 'Anonymous'} ${emoji}</span></div><span class="font-bold text-lg text-glow">${entry.score}</span>`;
+                                leaderboardContent.appendChild(entryDiv);
+                            });
+                        });
+                    }
+                } else {
+                    signInAnonymously(auth);
+                }
+            });
+        } catch (error) { console.error("Firebase initialization failed:", error); }
+
+        async function seedLeaderboard() {
+            if (!db) return;
+            const placeholderNames = ["DJ Neon", "RaveRider", "SynthWave", "BassJumper", "GlowStick", "TranceMaster", "Echo", "Flux", "BitCrush", "Voltage"];
+            const promises = [];
+            for (let i = 0; i < placeholderNames.length; i++) {
+                // Seeding doesn't use UID, it's just for placeholder data
+                const leaderboardCollectionRef = collection(db, `/artifacts/${appId}/public/data/leaderboard`);
+                promises.push(addDoc(leaderboardCollectionRef, { name: placeholderNames[i], rollNumber: `AB12C34${i}`, score: 20 - i * 2, createdAt: serverTimestamp() }));
+            }
+            await Promise.all(promises);
+        }
+        
+        if (!db) { leaderboardContent.innerHTML = '<div class="text-center p-4 text-red-400">Leaderboard disabled.</div>'; }
+
+        // --- AUDIO ENGINE ---
+        let audioCtx, mainGain, isMuted = false;
+        let musicScheduler = null;
+
+        function initAudio() {
+            if (isMuted) return;
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                mainGain = audioCtx.createGain();
+                mainGain.connect(audioCtx.destination);
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx || isMuted) return;
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(mainGain);
+
+            const startTime = audioCtx.currentTime;
+            let duration = 0.2;
+
+            if (type.type === 'arp') {
+                duration = 0.1;
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(type.freq, startTime);
+                gain.gain.setValueAtTime(0.15, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            } else if (type === 'kick') {
+                duration = 0.1;
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(120, startTime);
+                osc.frequency.exponentialRampToValueAtTime(0.01, startTime + duration);
+                gain.gain.setValueAtTime(1, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            } else if (type === 'hihat') {
+                duration = 0.05;
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(4000, startTime);
+                gain.gain.setValueAtTime(0.1, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            }
+            else if (type === 'flap') {
+                duration = 0.2;
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, startTime);
+                gain.gain.setValueAtTime(0.1, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+            } else if (type === 'score') {
+                duration = 0.1;
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(660, startTime);
+                osc.frequency.exponentialRampToValueAtTime(880, startTime + duration);
+                gain.gain.setValueAtTime(0.1, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+            } else if (type === 'lose') {
+                duration = 0.5;
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, startTime);
+                osc.frequency.exponentialRampToValueAtTime(110, startTime + duration);
+                gain.gain.setValueAtTime(0.2, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+            }
+
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        function startBackgroundMusic() {
+            if (musicScheduler || !audioCtx || isMuted) return;
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+
+            const bpm = 128;
+            const sixteenthNoteTime = (60 / bpm) / 4;
+            let currentNote = 0;
+            const arpNotes = [220, 293.66, 329.63, 440, 329.63, 293.66];
+            let arpIndex = 0;
+
+            function schedule() {
+                if (currentNote % 4 === 0) playSound('kick');
+                if (currentNote % 2 !== 0) playSound('hihat');
+                playSound({ type: 'arp', freq: arpNotes[arpIndex] });
+                arpIndex = (arpIndex + 1) % arpNotes.length;
+                currentNote = (currentNote + 1) % 16;
+            }
+            musicScheduler = setInterval(schedule, sixteenthNoteTime * 1000);
+        }
+
+        function stopBackgroundMusic() {
+            clearInterval(musicScheduler);
+            musicScheduler = null;
+        }
+
+        // --- GAME SETUP ---
+        const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score'), startModal = document.getElementById('startModal'), gameOverModal = document.getElementById('gameOverModal');
+        const startButton = document.getElementById('startButton');
+        const playAgainButton1 = document.getElementById('playAgainButton1');
+        const playAgainButton2 = document.getElementById('playAgainButton2');
+        const submitScoreButton = document.getElementById('submitScoreButton');
+        const viewLeaderboardButton = document.getElementById('viewLeaderboardButton');
+        const closeLeaderboardButton = document.getElementById('closeLeaderboardButton');
+        const finalScoreDisplay = document.getElementById('finalScore'), nameInput = document.getElementById('nameInput'), rollNumberInput = document.getElementById('rollNumberInput');
+        const muteButton = document.getElementById('muteButton');
+        const submissionSection = document.getElementById('submission-section'), postSubmissionSection = document.getElementById('post-submission-section');
+        const hypeReelContainer = document.getElementById('hypeReelContainer');
+        const alertModal = document.getElementById('alertModal'), alertMessage = document.getElementById('alertMessage'), alertOkButton = document.getElementById('alertOkButton');
+        const confirmModal = document.getElementById('confirmModal'), confirmMessage = document.getElementById('confirmMessage'), confirmOkButton = document.getElementById('confirmOkButton'), confirmCancelButton = document.getElementById('confirmCancelButton');
+
+        
+        let animationFrameId, canvasWidth, canvasHeight, player, pipes, score, particles, isGameOver, gameSpeed, gameStarted;
+        const GRAVITY = 0.3, LIFT = -6, PIPE_WIDTH = 50, PIPE_GAP = 180, PIPE_SPACING = 300;
+        const INITIAL_GAME_SPEED = 3, MAX_GAME_SPEED = 7, SCORE_DIFFICULTY_INTERVAL = 3;
+
+        // --- GAME OBJECTS --- (Player, Pipe, Particle)
+        function Player(x,y){this.x=x,this.y=y,this.velocity=0,this.radius=20,this.pulse=0,this.pulseSpeed=.1,this.draw=()=>{this.pulse+=this.pulseSpeed;const e=5*Math.sin(this.pulse)+25;ctx.save(),ctx.translate(this.x,this.y),ctx.shadowBlur=e,ctx.shadowColor="var(--glow-color)",ctx.fillStyle="white",ctx.beginPath(),ctx.arc(0,0,this.radius,0,2*Math.PI),ctx.fill(),ctx.strokeStyle="#333",ctx.lineWidth=5,ctx.beginPath(),ctx.arc(0,0,this.radius,1.1*Math.PI,1.9*Math.PI),ctx.stroke(),ctx.fillStyle="#1a1a1a",ctx.beginPath(),ctx.arc(-this.radius,0,8,0,2*Math.PI),ctx.fill(),ctx.beginPath(),ctx.arc(this.radius,0,8,0,2*Math.PI),ctx.fill(),ctx.restore()},this.update=()=>{this.velocity+=GRAVITY,this.y+=this.velocity,this.draw()},this.flap=()=>{this.velocity=LIFT,playSound("flap")}}
+        function Pipe(x){this.x=x,this.width=PIPE_WIDTH,this.topHeight=50+Math.random()*(canvasHeight-PIPE_GAP-100),this.bottomY=this.topHeight+PIPE_GAP,this.passed=!1,this.draw=()=>{ctx.shadowBlur=15,ctx.shadowColor="var(--secondary-glow)";const t=this.width/5;for(let s=0;s<5;s++){const i=10*Math.sin(Date.now()*.005+s)+10;ctx.fillStyle=`rgba(255, 0, 255, ${.6+ .4*Math.random()})`;const e=this.topHeight-i;ctx.fillRect(this.x+s*t,0,t-2,e);const o=this.bottomY+i;ctx.fillRect(this.x+s*t,o,t-2,canvasHeight-o)}ctx.shadowBlur=0},this.update=()=>{this.x-=gameSpeed,this.draw()}}
+        function Particle(x,y,r,c,v){this.x=x,this.y=y,this.radius=r,this.color=c,this.velocity=v,this.alpha=1,this.draw=()=>{ctx.save(),ctx.globalAlpha=this.alpha,ctx.beginPath(),ctx.arc(this.x,this.y,this.radius,0,2*Math.PI,!1),ctx.fillStyle=this.color,ctx.fill(),ctx.restore()},this.update=()=>{this.x+=this.velocity.x,this.y+=this.velocity.y,this.alpha-=.005,this.draw()}}
+
+        // --- GAME LOGIC ---
+        function resizeCanvas() {
+            const container = canvas.parentElement; const size = Math.min(container.clientWidth, container.clientHeight);
+            canvas.width = size; canvas.height = size / 3 * 4;
+            canvasWidth = canvas.width; canvasHeight = canvas.height;
+        }
+        function initGame() {
+            isGameOver = false;
+            gameStarted = false;
+            score = 0;
+            gameSpeed = INITIAL_GAME_SPEED;
+            scoreDisplay.textContent = score;
+            player = new Player(canvasWidth / 4, canvasHeight / 2);
+            pipes = [new Pipe(canvasWidth)];
+            particles = Array.from({ length: 50 }, () => new Particle(Math.random() * canvasWidth, Math.random() * canvasHeight, Math.random() * 2, Math.random() > 0.5 ? 'rgba(0, 255, 255, 0.5)' : 'rgba(255, 0, 255, 0.5)', { x: (Math.random() - 0.5) * 0.2, y: (Math.random() - 0.5) * 0.2 }));
+        }
+        function handlePipes() {
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                pipes[i].update();
+                if (player.x + player.radius > pipes[i].x && player.x - player.radius < pipes[i].x + PIPE_WIDTH && (player.y - player.radius < pipes[i].topHeight || player.y + player.radius > pipes[i].bottomY)) gameOver();
+                if (pipes[i].x + PIPE_WIDTH < player.x && !pipes[i].passed) {
+                    pipes[i].passed = true; score++; scoreDisplay.textContent = score; playSound('score');
+                    if (score > 0 && score % SCORE_DIFFICULTY_INTERVAL === 0 && gameSpeed < MAX_GAME_SPEED) gameSpeed += 0.3;
+                }
+                if (pipes[i].x + PIPE_WIDTH < 0) pipes.splice(i, 1);
+            }
+            if (pipes[pipes.length - 1].x < canvasWidth - PIPE_SPACING) pipes.push(new Pipe(canvasWidth));
+        }
+        function gameLoop() {
+            if (isGameOver) return;
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            if (gameStarted) {
+                particles.forEach(p => p.update());
+                player.update();
+                handlePipes();
+                if (player.y + player.radius > canvasHeight || player.y - player.radius < 0) gameOver();
+            } else {
+                particles.forEach(p => p.draw());
+                player.draw();
+                pipes.forEach(p => p.draw());
+            }
+            
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+        function gameOver() {
+            if (isGameOver) return;
+            isGameOver = true; cancelAnimationFrame(animationFrameId); stopBackgroundMusic(); playSound('lose');
+            canvas.classList.add('shake'); setTimeout(() => canvas.classList.remove('shake'), 500);
+            finalScoreDisplay.textContent = score;
+            gameOverModal.style.display = 'flex';
+            submissionSection.style.display = 'block';
+            postSubmissionSection.classList.add('hidden');
+            submitScoreButton.disabled = false; submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+        }
+        function startGame() {
+            initAudio();
+            initGame();
+            startModal.style.display = 'none';
+            gameOverModal.style.display = 'none';
+            leaderboardModal.style.display = 'none';
+            gameLoop();
+        }
+
+        // --- Custom Modals ---
+        function showAlert(message) {
+            alertMessage.textContent = message;
+            alertModal.style.display = 'flex';
+        }
+        function showConfirm(message) {
+            return new Promise((resolve) => {
+                confirmMessage.textContent = message;
+                confirmModal.style.display = 'flex';
+                confirmOkButton.onclick = () => { confirmModal.style.display = 'none'; resolve(true); };
+                confirmCancelButton.onclick = () => { confirmModal.style.display = 'none'; resolve(false); };
+            });
+        }
+        alertOkButton.onclick = () => alertModal.style.display = 'none';
+
+
+        // --- EVENT LISTENERS ---
+        function handleUserAction() {
+            if (isGameOver) return;
+            if (!gameStarted) {
+                gameStarted = true;
+                startBackgroundMusic();
+            }
+            player.flap();
+        }
+        window.addEventListener('resize', () => { resizeCanvas(); if (!animationFrameId) initGame(); });
+        canvas.addEventListener('mousedown', handleUserAction);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleUserAction(); });
+        window.addEventListener('keydown', (e) => { if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); handleUserAction(); }});
+        
+        startButton.addEventListener('click', startGame);
+        playAgainButton1.addEventListener('click', startGame);
+        playAgainButton2.addEventListener('click', startGame);
+        
+        viewLeaderboardButton.addEventListener('click', () => {
+            leaderboardModal.style.display = 'flex';
+        });
+        closeLeaderboardButton.addEventListener('click', () => {
+            leaderboardModal.style.display = 'none';
+        });
+
+        leaderboardContent.addEventListener('click', (e) => {
+            const entry = e.target.closest('.leaderboard-entry');
+            if(entry) {
+                const name = entry.dataset.name;
+                const roll = entry.dataset.rollnumber;
+                showAlert(`${name}'s Roll Number is: ${roll}`);
+            }
+        });
+
+        muteButton.addEventListener('click', () => {
+            isMuted = !isMuted;
+            if (isMuted) {
+                stopBackgroundMusic();
+            } else {
+                initAudio();
+                if(!isGameOver && gameStarted) {
+                    startBackgroundMusic();
+                }
+            }
+            muteButton.textContent = isMuted ? '🔇' : '🔊';
+        });
+
+        submitScoreButton.addEventListener('click', async () => {
+            const name = nameInput.value.trim();
+            const rollNumber = rollNumberInput.value.trim().toUpperCase();
+            
+            if (!name || !rollNumber) {
+                showAlert("Please fill in both your name and roll number.");
+                return;
+            }
+
+            // Roll number format validation (e.g., AB12C345)
+            const rollNumberRegex = /^[A-Z]{2}\d{2}[A-Z]\d{3}$/;
+            if (!rollNumberRegex.test(rollNumber)) {
+                showAlert("Invalid Roll Number format. Please use the format AB12C345.");
+                return;
+            }
+
+            if (!db || !userId) {
+                showAlert("Database connection error. Please try again.");
+                return;
+            }
+
+            submitScoreButton.disabled = true;
+            submitScoreButton.textContent = 'CHECKING...';
+
+            const userDocRef = doc(db, `/artifacts/${appId}/public/data/leaderboard`, userId);
+            const userDocSnap = await getDoc(userDocRef);
+
+            try {
+                if (userDocSnap.exists()) {
+                    // User exists, update score only if it's higher
+                    const existingData = userDocSnap.data();
+                    if (score > existingData.score) {
+                        await updateDoc(userDocRef, {
+                            score: score,
+                            createdAt: serverTimestamp()
+                        });
+                        latestDocId = userId;
+                    }
+                } else {
+                    // New user, show confirmation before creating
+                    const confirmed = await showConfirm("You can only set your Name and Roll Number once. Are you sure you want to submit?");
+                    if (!confirmed) {
+                        submitScoreButton.disabled = false;
+                        submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+                        return;
+                    }
+                    await setDoc(userDocRef, {
+                        name: name,
+                        rollNumber: rollNumber,
+                        score: score,
+                        createdAt: serverTimestamp()
+                    });
+                    latestDocId = userId;
+                }
+                
+                submissionSection.style.display = 'none';
+                postSubmissionSection.classList.remove('hidden');
+
+                // --- CUSTOMIZATION ---
+                // Paste the full "blockquote" embed code from Instagram here
+                hypeReelContainer.innerHTML = `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/C2Kq_D8y7fS/" data-instgrm-version="14" style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:320px; min-width:320px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);"></blockquote>`;
+                
+                if (window.instgrm) {
+                    window.instgrm.Embeds.process();
+                }
+
+            } catch (error) {
+                console.error("Error writing document: ", error);
+                showAlert("Submission failed. Please try again.");
+                submitScoreButton.disabled = false;
+                submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+            }
+        });
+
+        // Initial setup
+        resizeCanvas();
+        initGame();
+
+        // Draw the very first static frame so the canvas isn't blank
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        particles.forEach(p => p.draw());
+        player.draw();
+        pipes.forEach(p => p.draw());
+    </script>
+</body>
+</html>
+
