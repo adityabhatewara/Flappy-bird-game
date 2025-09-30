@@ -114,7 +114,7 @@
     
     <div id="startModal" class="absolute inset-0 z-20 flex items-center justify-center">
         <div class="text-center p-8 rounded-2xl max-w-md mx-4">
-            <h1 class="text-5xl md:text-6xl font-bold text-glow mb-4">FLoPPY BIRD</h1>
+            <h1 class="text-5xl md:text-6xl font-bold text-glow mb-4">FLOPPY BIRD</h1>
             <p class="text-xl text-glow-secondary mb-2">PROFUXKINGSHOWS</p>
             <p class="mb-8 text-lg">Click or Tap to fly. Avoid the neon bars.</p>
             <button id="startButton" class="modal-button text-2xl">START</button>
@@ -127,8 +127,8 @@
             <p class="text-2xl mb-4">Your Score: <span id="finalScore" class="font-bold text-glow">0</span></p>
 
             <div class="bg-purple-900 bg-opacity-50 p-4 rounded-lg border border-purple-500 mb-6">
-                 <h2 class="text-2xl font-bold text-glow mb-2">FIND OUT WHO THE EDM ARTIST IS</h2>
-                 <p>The EDM Night artist reveal is on 15th October. Top 3 on this game will get special prizes!</p>
+                 <h2 class="text-2xl font-bold text-glow mb-2">WANNA KNOW THE EDM NIGHT ARTIST?</h2>
+                 <p>Show up for the EDM night artist reveal on 15th october. Top 3 on the leaderboard will get a prize on 15th at HFC.</p>
             </div>
 
             <div id="submission-section">
@@ -593,7 +593,7 @@
                 return;
             }
 
-            const confirmed = await showConfirm("You can only set your Name and Roll Number once. Are you sure you want to submit?");
+            const confirmed = await showConfirm("You can only set your Name and Roll Number once. Submit the correct one!");
             if (!confirmed) return;
             
             submitScoreButton.disabled = true;
