@@ -413,12 +413,13 @@
 
         
         let animationFrameId, canvasWidth, canvasHeight, player, pipes, score, particles, isGameOver, gameSpeed, gameStarted;
+        let lastTime = 0, deltaTime = 0;
         const GRAVITY = 0.3, LIFT = -6, PIPE_WIDTH = 50, PIPE_GAP = 180, PIPE_SPACING = 300;
         const INITIAL_GAME_SPEED = 3, MAX_GAME_SPEED = 7, SCORE_DIFFICULTY_INTERVAL = 3;
 
         // --- GAME OBJECTS --- (Player, Pipe, Particle)
-        function Player(x,y){this.x=x,this.y=y,this.velocity=0,this.radius=20,this.pulse=0,this.pulseSpeed=.1,this.draw=()=>{this.pulse+=this.pulseSpeed;const e=5*Math.sin(this.pulse)+25;ctx.save(),ctx.translate(this.x,this.y),ctx.shadowBlur=e,ctx.shadowColor="var(--glow-color)",ctx.fillStyle="white",ctx.beginPath(),ctx.arc(0,0,this.radius,0,2*Math.PI),ctx.fill(),ctx.strokeStyle="#333",ctx.lineWidth=5,ctx.beginPath(),ctx.arc(0,0,this.radius,1.1*Math.PI,1.9*Math.PI),ctx.stroke(),ctx.fillStyle="#1a1a1a",ctx.beginPath(),ctx.arc(-this.radius,0,8,0,2*Math.PI),ctx.fill(),ctx.beginPath(),ctx.arc(this.radius,0,8,0,2*Math.PI),ctx.fill(),ctx.restore()},this.update=()=>{this.velocity+=GRAVITY,this.y+=this.velocity,this.draw()},this.flap=()=>{this.velocity=LIFT,playSound("flap")}}
-        function Pipe(x){this.x=x,this.width=PIPE_WIDTH,this.topHeight=50+Math.random()*(canvasHeight-PIPE_GAP-100),this.bottomY=this.topHeight+PIPE_GAP,this.passed=!1,this.draw=()=>{ctx.shadowBlur=15,ctx.shadowColor="var(--secondary-glow)";const t=this.width/5;for(let s=0;s<5;s++){const i=10*Math.sin(Date.now()*.005+s)+10;ctx.fillStyle=`rgba(255, 0, 255, ${.6+ .4*Math.random()})`;const e=this.topHeight-i;ctx.fillRect(this.x+s*t,0,t-2,e);const o=this.bottomY+i;ctx.fillRect(this.x+s*t,o,t-2,canvasHeight-o)}ctx.shadowBlur=0},this.update=()=>{this.x-=gameSpeed,this.draw()}}
+        function Player(x,y){this.x=x,this.y=y,this.velocity=0,this.radius=20,this.pulse=0,this.pulseSpeed=.1,this.draw=()=>{this.pulse+=this.pulseSpeed;const e=5*Math.sin(this.pulse)+25;ctx.save(),ctx.translate(this.x,this.y),ctx.shadowBlur=e,ctx.shadowColor="var(--glow-color)",ctx.fillStyle="white",ctx.beginPath(),ctx.arc(0,0,this.radius,0,2*Math.PI),ctx.fill(),ctx.strokeStyle="#333",ctx.lineWidth=5,ctx.beginPath(),ctx.arc(0,0,this.radius,1.1*Math.PI,1.9*Math.PI),ctx.stroke(),ctx.fillStyle="#1a1a1a",ctx.beginPath(),ctx.arc(-this.radius,0,8,0,2*Math.PI),ctx.fill(),ctx.beginPath(),ctx.arc(this.radius,0,8,0,2*Math.PI),ctx.fill(),ctx.restore()},this.update=()=>{if(deltaTime){this.velocity+=GRAVITY*60*deltaTime;this.y+=this.velocity*60*deltaTime;}this.draw()},this.flap=()=>{this.velocity=LIFT,playSound("flap")}}        
+        function Pipe(x){this.x=x,this.width=PIPE_WIDTH,this.topHeight=50+Math.random()*(canvasHeight-PIPE_GAP-100),this.bottomY=this.topHeight+PIPE_GAP,this.passed=!1,this.draw=()=>{ctx.shadowBlur=15,ctx.shadowColor="var(--secondary-glow)";const t=this.width/5;for(let s=0;s<5;s++){const i=10*Math.sin(Date.now()*.005+s)+10;ctx.fillStyle=`rgba(255, 0, 255, ${.6+ .4*Math.random()})`;const e=this.topHeight-i;ctx.fillRect(this.x+s*t,0,t-2,e);const o=this.bottomY+i;ctx.fillRect(this.x+s*t,o,t-2,canvasHeight-o)}ctx.shadowBlur=0},this.update=()=>{if(deltaTime){this.x-=gameSpeed*60*deltaTime;}this.draw()}}
         function Particle(x,y,r,c,v){this.x=x,this.y=y,this.radius=r,this.color=c,this.velocity=v,this.alpha=1,this.draw=()=>{ctx.save(),ctx.globalAlpha=this.alpha,ctx.beginPath(),ctx.arc(this.x,this.y,this.radius,0,2*Math.PI,!1),ctx.fillStyle=this.color,ctx.fill(),ctx.restore()},this.update=()=>{this.x+=this.velocity.x,this.y+=this.velocity.y,this.alpha-=.005,this.draw()}}
 
         // --- GAME LOGIC ---
@@ -449,8 +450,16 @@
             }
             if (pipes[pipes.length - 1].x < canvasWidth - PIPE_SPACING) pipes.push(new Pipe(canvasWidth));
         }
-        function gameLoop() {
+        function gameLoop(timestamp) {
             if (isGameOver) return;
+            
+            // Calculate delta time
+            if (!lastTime) {
+                lastTime = timestamp;
+            }
+            deltaTime = (timestamp - lastTime) / 1000; // Convert to seconds
+            lastTime = timestamp;
+
             ctx.clearRect(0, 0, canvasWidth, canvasHeight);
             
             if (gameStarted) {
