@@ -602,38 +602,63 @@
                 return;
             }
 
-            const confirmed = await showConfirm("You can only set your Name and Roll Number once. Submit the correct one to claim the prizes!");
-            if (!confirmed) return;
-            
             submitScoreButton.disabled = true;
-            submitScoreButton.textContent = 'SAVING...';
+            submitScoreButton.textContent = 'CHECKING...';
 
             const board = await getLeaderboard();
             const existingUser = board.find(entry => entry.rollNumber === rollNumber);
 
-            if(existingUser) {
-                 showAlert("This Roll Number has already been registered. You can only update your score by playing again.");
-                 submitScoreButton.disabled = false;
-                 submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
-                 return;
-            }
+            if (existingUser) {
+                // User with this Roll Number already exists
+                if (existingUser.name.toLowerCase() === name.toLowerCase()) {
+                    // Names match - this is a returning user who cleared cache
+                    localStorage.setItem('edmGlowUserName', existingUser.name);
+                    localStorage.setItem('edmGlowUserRoll', existingUser.rollNumber);
+                    
+                    if (score > existingUser.score) {
+                        existingUser.score = score;
+                        const saved = await saveLeaderboard(board);
+                        if (!saved) { // Handle save failure
+                            submitScoreButton.disabled = false;
+                            submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+                            return;
+                        }
+                    }
+                    submissionSection.style.display = 'none';
+                    postSubmissionSection.classList.remove('hidden');
+                    loadInstaEmbed();
 
-            localStorage.setItem('edmGlowUserName', name);
-            localStorage.setItem('edmGlowUserRoll', rollNumber);
-
-            board.push({ name, rollNumber, score });
-            const saved = await saveLeaderboard(board);
-            
-            if(saved) {
-                submissionSection.style.display = 'none';
-                postSubmissionSection.classList.remove('hidden');
-                loadInstaEmbed();
+                } else {
+                    // Names do NOT match - prompt them to use the correct name
+                    showAlert(`This Roll Number is registered to '${existingUser.name}'. Please use that name to update your score.`);
+                    submitScoreButton.disabled = false;
+                    submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+                }
             } else {
-                 submitScoreButton.disabled = false;
-                 submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+                // This is a completely new player
+                const confirmed = await showConfirm("You can only set your Name and Roll Number once. Are you sure you want to submit?");
+                if (!confirmed) {
+                    submitScoreButton.disabled = false;
+                    submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+                    return;
+                }
+
+                localStorage.setItem('edmGlowUserName', name);
+                localStorage.setItem('edmGlowUserRoll', rollNumber);
+
+                board.push({ name, rollNumber, score });
+                const saved = await saveLeaderboard(board);
+                
+                if (saved) {
+                    submissionSection.style.display = 'none';
+                    postSubmissionSection.classList.remove('hidden');
+                    loadInstaEmbed();
+                } else {
+                    submitScoreButton.disabled = false;
+                    submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
+                }
             }
         });
-
         // Initial setup
         resizeCanvas();
         initGame();
