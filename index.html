@@ -565,14 +565,14 @@
             leaderboardModal.style.display = 'none';
         });
 
-        leaderboardContent.addEventListener('click', (e) => {
-            const entry = e.target.closest('.leaderboard-entry');
-            if(entry) {
-                const name = entry.dataset.name;
-                const roll = entry.dataset.rollnumber;
-                showAlert(`${name}'s Roll Number is: ${roll}`);
-            }
-        });
+        // leaderboardContent.addEventListener('click', (e) => {
+        //     const entry = e.target.closest('.leaderboard-entry');
+        //     if(entry) {
+        //         const name = entry.dataset.name;
+        //         const roll = entry.dataset.rollnumber;
+        //         showAlert(`${name}'s Roll Number is: ${roll}`);
+        //     }
+        // });
 
         muteButton.addEventListener('click', () => {
             isMuted = !isMuted;
