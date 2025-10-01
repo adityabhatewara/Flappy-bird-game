@@ -630,7 +630,7 @@
 
                 } else {
                     // Names do NOT match - prompt them to use the correct name
-                    showAlert(`This Roll Number is registered to '${existingUser.name}'. Please use that name to update your score.`);
+                    showAlert(`This Roll Number is already registered. Enter the registered name to update your score.`);
                     submitScoreButton.disabled = false;
                     submitScoreButton.textContent = 'SUBMIT TO LEADERBOARD';
                 }
