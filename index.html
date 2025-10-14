@@ -209,19 +209,18 @@
         const highScoreDisplay = document.getElementById('highScoreDisplay');
         const leaderboardModal = document.getElementById('leaderboardModal');
         const leaderboardContent = leaderboardModal.querySelector('#leaderboard-content');
-        const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+        
         
         async function getLeaderboard() {
+            const functionUrl = '/.netlify/functions/get-leaderboard';
             try {
-                const response = await fetch(`${BIN_URL}/latest`, {
-                    headers: { 'X-Master-Key': MASTER_KEY }
-                });
-                if (!response.ok) { // If bin is new/empty, it might return 404
-                     if(response.status === 404) return seedLeaderboard();
-                     throw new Error('Could not fetch leaderboard');
+                const response = await fetch(functionUrl);
+                if (!response.ok) {
+                    throw new Error('Could not fetch leaderboard');
                 }
                 const data = await response.json();
-                return data.record;
+                // The function now returns the data directly (e.g., { scores: [...] })
+                return data.scores;
             } catch (error) {
                 console.error("Error getting leaderboard:", error);
                 showAlert("Could not load leaderboard. Please check your connection.");
