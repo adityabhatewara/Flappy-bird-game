@@ -1,38 +1,37 @@
+// File: netlify/functions/get-leaderboard.js
+
 exports.handler = async function(event) {
-    // This function only allows GET requests
     if (event.httpMethod !== 'GET') {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
     try {
-        // Securely get keys from Netlify environment variables
         const MASTER_KEY = process.env.MASTER_KEY;
         const BIN_ID = process.env.BIN_ID;
-
         const binUrl = `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`;
 
-        // Fetch the current leaderboard from JSONBin
         const response = await fetch(binUrl, {
             headers: { 'X-Master-Key': MASTER_KEY }
         });
 
-        if (!response.ok) {
-            // If the bin doesn't exist yet, return an empty array
-            if (response.status === 404) {
-                return {
-                    statusCode: 200,
-                    body: JSON.stringify({ scores: [] })
-                };
-            }
-            throw new Error('Failed to fetch leaderboard data.');
+        // If the bin doesn't exist yet (404), return an empty scores array.
+        if (response.status === 404) {
+            return {
+                statusCode: 200,
+                body: JSON.stringify({ scores: [] }) // Always return a scores array
+            };
         }
-
-        const leaderboardData = await response.json();
         
-        // Return the fetched data to the frontend
+        if (!response.ok) throw new Error('Failed to fetch from JSONBin.');
+
+        const data = await response.json();
+        
+        // Ensure we always have a scores array to send back
+        const scores = data.record.scores || [];
+
         return {
             statusCode: 200,
-            body: JSON.stringify(leaderboardData.record) // Send back the 'scores' array
+            body: JSON.stringify({ scores: scores }) // Always return an object with a scores property
         };
 
     } catch (error) {
