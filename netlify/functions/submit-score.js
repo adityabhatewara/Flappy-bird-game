@@ -14,8 +14,8 @@ exports.handler = async function(event) {
         }
 
         // Securely get keys from the Netlify environment variables
-        const MASTER_KEY = process.env.JSONBIN_MASTER_KEY;
-        const BIN_ID = process.env.JSONBIN_BIN_ID;
+        const MASTER_KEY = process.env.MASTER_KEY;
+        const BIN_ID = process.env.BIN_ID;
 
         const binUrl = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
