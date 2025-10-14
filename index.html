@@ -211,6 +211,8 @@
         const leaderboardContent = leaderboardModal.querySelector('#leaderboard-content');
         
         
+        // In your <script> tag within index.html
+
         async function getLeaderboard() {
             const functionUrl = '/.netlify/functions/get-leaderboard';
             try {
@@ -218,13 +220,15 @@
                 if (!response.ok) {
                     throw new Error('Could not fetch leaderboard');
                 }
+                // The backend now guarantees the response has a .scores property
                 const data = await response.json();
-                // The function now returns the data directly (e.g., { scores: [...] })
-                return data.scores;
+                return data.scores; // This will now be an array, never undefined
+                
             } catch (error) {
                 console.error("Error getting leaderboard:", error);
                 showAlert("Could not load leaderboard. Please check your connection.");
-                return seedLeaderboard(); // Return placeholder data on error
+                // Return a default array on error so the app doesn't crash
+                return seedLeaderboard();
             }
         }
 
