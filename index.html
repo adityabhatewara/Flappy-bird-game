@@ -490,6 +490,8 @@
             
             animationFrameId = requestAnimationFrame(gameLoop);
         }
+  
+
         async function gameOver() {
             if (isGameOver) return;
             isGameOver = true;
@@ -499,20 +501,21 @@
             canvas.classList.add('shake');
             setTimeout(() => canvas.classList.remove('shake'), 500);
             finalScoreDisplay.textContent = score;
-
+        
             const userRoll = localStorage.getItem('edmGlowUserRoll');
-
-            if (userRoll) {
-                const board = await getLeaderboard();
-                const userEntry = board.find(entry => entry.rollNumber === userRoll);
-                if (userEntry && score > userEntry.score) {
-                    userEntry.score = score;
-                    await saveLeaderboard(board);
-                }
+            const userName = localStorage.getItem('edmGlowUserName');
+        
+            // Check if this is a returning user
+            if (userRoll && userName) {
+                // Automatically submit the new score for the returning user
+                console.log("Returning user detected. Submitting new score...");
+                await submitScoreToLeaderboard(userName, userRoll, score);
+        
                 submissionSection.style.display = 'none';
                 postSubmissionSection.classList.remove('hidden');
                 loadInstaEmbed();
             } else {
+                // This is a new user, show the submission form
                 submissionSection.style.display = 'block';
                 postSubmissionSection.classList.add('hidden');
             }
