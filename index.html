@@ -187,13 +187,8 @@
 
 
     <script>
-        // --- CUSTOMIZATION ---
-        // 1. Paste your JSONBin.io Master Key here
-        const MASTER_KEY = '$2a$10$FYQ6L7uZCETxHybQFt73WO9J4ZhQkETyrAShq15EWTNjnmPp.YW7m';
-        // 2. Paste your JSONBin.io Bin ID here
-        const BIN_ID = '68dbc711ae596e708f011b21';
-
-        // To change the background images, just replace the URLs in this array:
+        
+        
         const backgroundImages = [
             'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1920&q=80',
             'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=1920&q=80',
@@ -234,26 +229,38 @@
             }
         }
 
-        async function saveLeaderboard(board) {
-             try {
-                const response = await fetch(BIN_URL, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': MASTER_KEY
-                    },
-                    body: JSON.stringify(board)
+        
+        async function submitScoreToLeaderboard(name, rollNumber, score) {
+            // This special URL points to the secure function you created
+            const functionUrl = '/.netlify/functions/submit-score';
+        
+            try {
+                const response = await fetch(functionUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        rollNumber: rollNumber,
+                        score: score
+                    }),
                 });
-                if (!response.ok) throw new Error('Could not save leaderboard');
-                updateLeaderboardDisplay(); // Update display after saving
-                return true;
+        
+                if (!response.ok) {
+                    // If the server function returned an error, show it
+                    const errorResult = await response.text();
+                    throw new Error(errorResult || 'Server responded with an error.');
+                }
+        
+                const result = await response.json();
+                console.log(result.message); // "Score submitted successfully!"
+                return true; // Indicate success
+        
             } catch (error) {
-                console.error("Error saving leaderboard:", error);
-                showAlert("Could not save your score. Please check your connection.");
-                return false;
+                console.error('Failed to submit score:', error);
+                showAlert(`Could not submit score: ${error.message}`);
+                return false; // Indicate failure
             }
         }
-        
         function seedLeaderboard() {
             return [
                 { name: "DJ Neon", rollNumber: "AB12C340", score: 20 },
