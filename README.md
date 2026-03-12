@@ -9,7 +9,7 @@ The idea was simple: instead of just telling people who was coming, we made them
 
 ## 📸 What it Looks Like
 *(Replace this with a GIF of you playing the game!)*
-![Gameplay Preview](./assets/your-gameplay-gif.gif)
+![Flappy Bird Gameplay](./flappy.jpeg)
 
 ## The Chaos: Defending Against My Friends
 The funniest (and most stressful) part of this project wasn't building the physics engine—it was keeping the artist a secret. 
