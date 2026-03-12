@@ -8,7 +8,6 @@ Standard PR posters get ignored, and simply dropping a name on an Instagram stor
 The idea was simple: instead of just telling people who was coming, we made them play a custom-themed Flappy Bird game. Once a player hit a specific high score, the game would finally unlock and display the official artist reveal graphic. It turned a regular announcement into a campus-wide competition.
 
 ## 📸 What it Looks Like
-*(Replace this with a GIF of you playing the game!)*
 ![Flappy Bird Gameplay](./flappy.jpeg)
 
 ## The Chaos: Defending Against My Friends
